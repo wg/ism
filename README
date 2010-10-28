@@ -1,0 +1,12 @@
+Infinispan Session Manager
+
+  A HttpSession manager that replicates sessions in an Infinigrid Cache.
+  This project currently supports Jetty 7.x and has been tested with
+  Jetty 7.2.0.v20101020.
+
+* Limitations
+
+  All objects stored in the InfinigridHttpSession must be serializable
+  and also have a no-arg constructor.
+
+  HttpSessionAttributeListeners are not currently invoked.
