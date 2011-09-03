@@ -5,7 +5,7 @@
 
   <groupId>com.lambdaworks</groupId>
   <artifactId>ism</artifactId>
-  <version>1.1.0</version>
+  <version>1.2.0</version>
 
   <packaging>jar</packaging>
 
@@ -32,13 +32,13 @@
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-server</artifactId>
-      <version>7.3.1.v20110307</version>
+      <version>${jetty.version}</version>
     </dependency>
 
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-servlet</artifactId>
-      <version>7.3.1.v20110307</version>
+      <version>${jetty.version}</version>
     </dependency>
 
     <dependency>
@@ -50,7 +50,7 @@
     <dependency>
       <groupId>org.infinispan</groupId>
       <artifactId>infinispan-core</artifactId>
-      <version>4.2.1.FINAL</version>
+      <version>5.0.0.FINAL</version>
     </dependency>
 
    <dependency>
@@ -113,6 +113,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <jetty.version>7.4.5.v20110725</jetty.version>
   </properties>
 
   <scm>
