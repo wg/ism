@@ -1,8 +1,16 @@
-Infinispan Session Manager
+ism - Infinispan Session Manager
 
-  A HttpSession manager that replicates sessions in an Infinispan Cache.
-  This project currently supports Jetty 7.x and has been tested with
-  Jetty 7.3.1.v20110307 and Infinispan 4.2.1.FINAL.
+  A Jetty SessionManager that replicates sessions in an Infinispan Cache. This
+  provides an easy way to build a cluster of Jetty instances that share session
+  state.
+
+  This version supports Jetty 8.1.x and has been tested with
+  Jetty 8.1.10.v20130312 and Infinispan 5.2.5.Final
+
+  Join the lambdaWorks-OSS Google Group to discuss this project:
+
+    http://groups.google.com/group/lambdaworks-oss
+    lambdaworks-oss@googlegroups.com
 
 * Limitations
 

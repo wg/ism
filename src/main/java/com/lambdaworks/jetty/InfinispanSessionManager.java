@@ -12,17 +12,17 @@ import org.eclipse.jetty.util.component.AbstractLifeCycle;
 import org.infinispan.Cache;
 import org.infinispan.notifications.Listener;
 import org.infinispan.notifications.cachelistener.annotation.*;
-import org.infinispan.notifications.cachelistener.event.CacheEntryCreatedEvent;
-import org.infinispan.notifications.cachelistener.event.CacheEntryEvent;
+import org.infinispan.notifications.cachelistener.event.*;
 
+import javax.servlet.SessionCookieConfig;
+import javax.servlet.SessionTrackingMode;
 import javax.servlet.http.*;
-import java.util.EventListener;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Jetty 7.x {@link SessionManager} that stores sessions in an
- * <a href="http://www.jboss.org/infinispan">Infinispan</a> distributed
- * {@link Cache}.
+ * Jetty {@link SessionManager} that stores sessions in an Infinispan
+ * distributed {@link Cache}.
  *
  * All objects stored in the {@link InfinispanHttpSession} must implement
  * {@link java.io.Serializable} and also have a no-arg constructor.
@@ -38,14 +38,11 @@ public class InfinispanSessionManager extends AbstractLifeCycle implements Sessi
     private ContextHandler.Context context;
 
     private int maxIdleTime;
-    private boolean secureCookies = false;
-    private boolean httpOnly = false;
-    private String sessionCookieName = __DefaultSessionCookie;
+    private TimeUnit maxIdleUnit;
+
+    private InfinispanSessionCookieConfig cookieConfig;
     private String sessionIdPathParameterName = __DefaultSessionIdPathParameterName;
     private String sessionIdPathParameterNamePrefix = ";"+ sessionIdPathParameterName + "=";
-    private String sessionDomain = __DefaultSessionDomain;
-    private String sessionPath;
-    private int maxCookieAge = -1;
     private boolean checkRemoteSessionId;
 
     protected Object listeners;
@@ -57,45 +54,62 @@ public class InfinispanSessionManager extends AbstractLifeCycle implements Sessi
      * @param   cache   The cache to manage sessions in.
      */
     public InfinispanSessionManager(Cache<String, InfinispanHttpSession> cache) {
-        this.idManager = new InfinispanSessionIdManager(cache);
+        this.maxIdleUnit = TimeUnit.SECONDS;
+        this.idManager = new InfinispanSessionIdManager(cache, maxIdleUnit);
         this.cache = cache;
+
+        cookieConfig = new InfinispanSessionCookieConfig();
+        cookieConfig.setName(__DefaultSessionCookie);
+        cookieConfig.setDomain(__DefaultSessionDomain);
+        cookieConfig.setPath(null);
+        cookieConfig.setHttpOnly(false);
+        cookieConfig.setSecure(false);
+
         cache.addListener(this);
     }
 
+    @Override
     public HttpSession getHttpSession(String id) {
         return cache.get(id);
     }
 
+    @Override
     public HttpSession newHttpSession(HttpServletRequest request) {
         String id = idManager.newSessionId(request, -1L);
         InfinispanHttpSession session = new InfinispanHttpSession(id, maxIdleTime);
         session.restore(cache, context);
 
-        cache.put(id, session, -1, TimeUnit.SECONDS, maxIdleTime, TimeUnit.SECONDS);
+        cache.put(id, session, -1, maxIdleUnit, maxIdleTime, maxIdleUnit);
 
         return session;
     }
 
-    public boolean getSecureCookies() {
-        return secureCookies;
-    }
-
+    @Override
     public boolean getHttpOnly() {
-        return httpOnly;
+        return cookieConfig.httpOnly;
     }
 
+    @Override
     public int getMaxInactiveInterval() {
         return maxIdleTime;
     }
 
+    @Override
     public void setMaxInactiveInterval(int interval) {
         this.maxIdleTime = interval;
     }
 
+    public void setMaxInactiveInterval(int interval, TimeUnit unit) {
+        this.maxIdleTime = interval;
+        this.maxIdleUnit = unit;
+    }
+
+    @Override
     public void setSessionHandler(SessionHandler handler) {
         this.handler = handler;
     }
 
+    @Override
     public void addEventListener(EventListener listener) {
         if (listener instanceof HttpSessionListener)
             listeners = LazyList.add(listeners, listener);
@@ -103,6 +117,7 @@ public class InfinispanSessionManager extends AbstractLifeCycle implements Sessi
             attributeListeners = LazyList.add(attributeListeners, listener);
     }
 
+    @Override
     public void removeEventListener(EventListener listener) {
         if (listener instanceof HttpSessionListener)
             listeners = LazyList.remove(listeners, listener);
@@ -110,46 +125,54 @@ public class InfinispanSessionManager extends AbstractLifeCycle implements Sessi
             attributeListeners = LazyList.remove(attributeListeners, listener);
     }
 
+    @Override
     public void clearEventListeners() {
         listeners = null;
         attributeListeners = null;
     }
 
+    @Override
     public HttpCookie getSessionCookie(HttpSession session, String contextPath, boolean requestIsSecure) {
-        String path = (sessionPath == null) ? contextPath : sessionPath;
+        String path = (cookieConfig.path == null) ? contextPath : cookieConfig.path;
 
         HttpCookie cookie = new HttpCookie(
-            sessionCookieName,
+            cookieConfig.name,
             session.getId(),
-            sessionDomain,
+            cookieConfig.domain,
             (path == null || path.isEmpty()) ? "/" : path,
-            maxCookieAge,
-            httpOnly,
-            requestIsSecure && secureCookies);
+            cookieConfig.maxAge,
+            cookieConfig.httpOnly,
+            requestIsSecure && cookieConfig.secure);
 
         return cookie;
     }
 
-    public SessionIdManager getIdManager() {
+    @Override
+    public SessionIdManager getSessionIdManager() {
         return idManager;
     }
 
-    public void setIdManager(SessionIdManager idManager) {
+    @Override
+    public void setSessionIdManager(SessionIdManager idManager) {
         this.idManager = idManager;
     }
 
+    @Override
     public boolean isValid(HttpSession session) {
         return ((InfinispanHttpSession) session).isValid();
     }
 
+    @Override
     public String getNodeId(HttpSession session) {
         return session.getId();
     }
 
+    @Override
     public String getClusterId(HttpSession session) {
         return session.getId();
     }
 
+    @Override
     public HttpCookie access(HttpSession httpSession, boolean secure) {
         HttpCookie cookie = null;
 
@@ -159,7 +182,7 @@ public class InfinispanSessionManager extends AbstractLifeCycle implements Sessi
         session.access(now);
         long cookieCreatedAt = session.getCookieCreatedAt();
 
-        if (getMaxCookieAge() > 0 && now >= cookieCreatedAt) {
+        if (cookieConfig.maxAge > 0 && now >= cookieCreatedAt) {
             session.setCookieCreatedAt(now);
             String contextPath = (context == null) ? "/" : context.getContextPath();
             cookie = getSessionCookie(session, contextPath, secure);
@@ -168,6 +191,7 @@ public class InfinispanSessionManager extends AbstractLifeCycle implements Sessi
         return cookie;
     }
 
+    @Override
     public void complete(HttpSession httpSession) {
         InfinispanHttpSession session = (InfinispanHttpSession) httpSession;
         if (session.isValid() && session.isModified()) {
@@ -176,60 +200,61 @@ public class InfinispanSessionManager extends AbstractLifeCycle implements Sessi
         }
     }
 
-    public void setSessionCookie(String sessionCookieName) {
-        this.sessionCookieName = sessionCookieName;
-    }
-
-    public String getSessionCookie() {
-        return sessionCookieName;
-    }
-
+    @Override
     public void setSessionIdPathParameterName(String sessionIdPathParameterName) {
         this.sessionIdPathParameterName = sessionIdPathParameterName;
     }
 
+    @Override
     public String getSessionIdPathParameterName() {
         return sessionIdPathParameterName;
     }
 
+    @Override
     public String getSessionIdPathParameterNamePrefix() {
         return sessionIdPathParameterNamePrefix;
     }
 
-    public void setSessionDomain(String sessionDomain) {
-        this.sessionDomain = sessionDomain;
-    }
-
-    public String getSessionDomain() {
-        return sessionDomain;
-    }
-
-    public void setSessionPath(String sessionPath) {
-        this.sessionPath = sessionPath;
-    }
-
-    public String getSessionPath() {
-        return sessionPath;
-    }
-
-    public void setMaxCookieAge(int maxCookieAge) {
-        this.maxCookieAge = maxCookieAge;
-    }
-
-    public int getMaxCookieAge() {
-        return maxCookieAge;
-    }
-
+    @Override
     public boolean isUsingCookies() {
         return true;
     }
 
+    @Override
+    public boolean isUsingURLs() {
+        return false;
+    }
+
+    @Override
     public boolean isCheckingRemoteSessionIdEncoding() {
         return checkRemoteSessionId;
     }
 
+    @Override
     public void setCheckingRemoteSessionIdEncoding(boolean remote) {
         this.checkRemoteSessionId = remote;
+    }
+
+    @Override
+    public Set<SessionTrackingMode> getDefaultSessionTrackingModes() {
+        return EnumSet.of(SessionTrackingMode.COOKIE);
+    }
+
+    @Override
+    public Set<SessionTrackingMode> getEffectiveSessionTrackingModes() {
+        return EnumSet.of(SessionTrackingMode.COOKIE);
+    }
+
+    @Override
+    public void setSessionTrackingModes(Set<SessionTrackingMode> modes) {
+        if (modes.size() != 1 || !modes.contains(SessionTrackingMode.COOKIE)) {
+            throw new UnsupportedOperationException("Only cookie sessions are supported");
+        }
+    }
+
+    @Override
+    public SessionCookieConfig getSessionCookieConfig() {
+        return cookieConfig;
     }
 
     @Override
@@ -242,9 +267,8 @@ public class InfinispanSessionManager extends AbstractLifeCycle implements Sessi
     }
 
     @CacheEntryCreated
-    public void cacheEntryCreated(CacheEntryCreatedEvent e) {
+    public void cacheEntryCreated(CacheEntryCreatedEvent<String, InfinispanHttpSession> e) {
         InfinispanHttpSession session = cache.get(e.getKey());
-
         if (session != null) {
             if (!e.isOriginLocal()) session.restore(cache, context);
 
@@ -258,22 +282,31 @@ public class InfinispanSessionManager extends AbstractLifeCycle implements Sessi
     }
 
     @CacheEntryRemoved
-    @CacheEntryEvicted
-    public void cacheEntryRemoved(CacheEntryEvent e) {
-        InfinispanHttpSession session = cache.get(e.getKey());
+    public void cacheEntryRemoved(CacheEntryRemovedEvent<String, InfinispanHttpSession> e) {
+        InfinispanHttpSession session = e.getValue();
+        if (session != null && listeners != null) {
+            HttpSessionEvent event = new HttpSessionEvent(session);
+            for (int i = 0; i < LazyList.size(listeners); i++) {
+                ((HttpSessionListener) LazyList.get(listeners, i)).sessionDestroyed(event);
+            }
+        }
+    }
+
+    @CacheEntriesEvicted
+    public void cacheEntriesEvicted(CacheEntriesEvictedEvent<String, InfinispanHttpSession> e) {
         if (listeners != null) {
-             HttpSessionEvent event = new HttpSessionEvent(session);
-             for (int i = 0; i < LazyList.size(listeners); i++) {
-                 ((HttpSessionListener) LazyList.get(listeners, i)).sessionDestroyed(event);
-             }
-         }
-     }
+            for (InfinispanHttpSession session : e.getEntries().values()) {
+                HttpSessionEvent event = new HttpSessionEvent(session);
+                for (int i = 0; i < LazyList.size(listeners); i++) {
+                    ((HttpSessionListener) LazyList.get(listeners, i)).sessionDestroyed(event);
+                }
+            }
+        }
+    }
 
     /** Obsolete and deprecated methods */
 
-    /**
-     * @deprecated
-     */
+    @Deprecated
     public SessionIdManager getMetaManager() {
         throw new UnsupportedOperationException("This method is deprecated");
     }

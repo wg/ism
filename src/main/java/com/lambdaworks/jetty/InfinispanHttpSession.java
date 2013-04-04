@@ -17,9 +17,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * {@link HttpSession} implementation designed to be replicated in an
- * <a href="http://www.jboss.org/infinispan">Infinispan</a> distributed
- * {@link Cache}.
+ * {@link HttpSession} implementation designed to be replicated in an Infinispan
+ * distributed {@link Cache}.
  *
  * @author  Will Glozer
  */
@@ -54,39 +53,48 @@ public class InfinispanHttpSession implements HttpSession, Serializable {
         this.isValid = true;
     }
 
+    @Override
     public long getCreationTime() {
         return createdAt;
     }
 
+    @Override
     public String getId() {
         return id;
     }
 
+    @Override
     public long getLastAccessedTime() {
         return lastAccessedAt;
     }
 
+    @Override
     public ServletContext getServletContext() {
         return context;
     }
 
+    @Override
     public void setMaxInactiveInterval(int interval) {
         maxIdleTime = interval;
         isModified = true;
     }
 
+    @Override
     public int getMaxInactiveInterval() {
         return maxIdleTime;
     }
 
+    @Override
     public Object getAttribute(String name) {
         return attributes.get(name);
     }
 
-    public Enumeration getAttributeNames() {
+    @Override
+    public Enumeration<String> getAttributeNames() {
         return Collections.enumeration(attributes.keySet());
     }
 
+    @Override
     public void setAttribute(String name, Object value) {
         Object oldValue = attributes.put(name, value);
         isModified = true;
@@ -94,12 +102,14 @@ public class InfinispanHttpSession implements HttpSession, Serializable {
         unbind(name, oldValue);
     }
 
+    @Override
     public void removeAttribute(String name) {
         Object value = attributes.remove(name);
         isModified = true;
         unbind(name, value);
     }
 
+    @Override
     public void invalidate() {
         Iterator<Map.Entry<String, Object>> i = attributes.entrySet().iterator();
         while (i.hasNext()) {
@@ -114,6 +124,7 @@ public class InfinispanHttpSession implements HttpSession, Serializable {
         cache.remove(id);
     }
 
+    @Override
     public boolean isNew() {
         return createdAt == lastAccessedAt;
     }
@@ -168,39 +179,33 @@ public class InfinispanHttpSession implements HttpSession, Serializable {
 
     /** Obsolete and deprecated methods **/
 
-    /**
-     * @deprecated
-     */
+    @Deprecated
+    @Override
     public Object getValue(String name) {
         throw new UnsupportedOperationException("This method is deprecated");
     }
 
-    /**
-     * @deprecated
-     */
+    @Deprecated
+    @Override
     public void removeValue(String name) {
         throw new UnsupportedOperationException("This method is deprecated");
     }
 
-    /**
-     * @deprecated
-     */
+    @Deprecated
+    @Override
     public String[] getValueNames() {
         throw new UnsupportedOperationException("This method is deprecated");
     }
 
-    /**
-     * @deprecated
-     */
+    @Deprecated
+    @Override
     public void putValue(String name, Object value) {
         throw new UnsupportedOperationException("This method is deprecated");
     }
 
-    /**
-     * @deprecated
-     */
+    @Deprecated
+    @Override
     public HttpSessionContext getSessionContext() {
         throw new UnsupportedOperationException("This method is deprecated");
     }
-
 }

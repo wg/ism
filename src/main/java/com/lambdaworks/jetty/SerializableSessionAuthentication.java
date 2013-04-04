@@ -43,18 +43,22 @@ public class SerializableSessionAuthentication implements Authentication.User,
         this.identity = identity;
     }
 
+    @Override
     public String getAuthMethod() {
         return method;
     }
 
+    @Override
     public UserIdentity getUserIdentity() {
         return identity;
     }
 
+    @Override
     public boolean isUserInRole(UserIdentity.Scope scope, String role) {
         return identity.isUserInRole(role, scope);
     }
 
+    @Override
     public void logout() {
         if (session != null) {
             session.removeAttribute(SessionAuthentication.__J_AUTHENTICATED);
@@ -62,18 +66,22 @@ public class SerializableSessionAuthentication implements Authentication.User,
         }
     }
 
+    @Override
     public void sessionDidActivate(HttpSessionEvent event) {
         if (session == null) session = event.getSession();
     }
 
+    @Override
     public void sessionWillPassivate(HttpSessionEvent event) {
         // nothing to do here
     }
 
+    @Override
     public void valueBound(HttpSessionBindingEvent event) {
         if (session == null) session = event.getSession();
     }
 
+    @Override
     public void valueUnbound(HttpSessionBindingEvent event) {
         // nothing to do here
     }

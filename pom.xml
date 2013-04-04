@@ -5,13 +5,13 @@
 
   <groupId>com.lambdaworks</groupId>
   <artifactId>ism</artifactId>
-  <version>1.2.0</version>
+  <version>2.0.0</version>
 
   <packaging>jar</packaging>
 
   <name>ism</name>
   <description>Infinispan session manager</description>
-  <url>http://github.com/wg/lettuce</url>
+  <url>http://github.com/wg/ism</url>
 
   <licenses>
     <license>
@@ -42,15 +42,9 @@
     </dependency>
 
     <dependency>
-      <groupId>javax.servlet</groupId>
-      <artifactId>servlet-api</artifactId>
-      <version>2.5</version>
-    </dependency>
-
-    <dependency>
       <groupId>org.infinispan</groupId>
       <artifactId>infinispan-core</artifactId>
-      <version>5.0.0.FINAL</version>
+      <version>5.2.5.Final</version>
     </dependency>
 
    <dependency>
@@ -80,7 +74,7 @@
         <configuration>
           <level>public</level>
           <links>
-            <link>http://download.eclipse.org/jetty/stable-7/apidocs/</link>
+            <link>http://download.eclipse.org/jetty/stable-8/apidocs/</link>
           </links>
         </configuration>
       </plugin>
@@ -113,7 +107,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <jetty.version>7.4.5.v20110725</jetty.version>
+    <jetty.version>8.1.10.v20130312</jetty.version>
   </properties>
 
   <scm>
